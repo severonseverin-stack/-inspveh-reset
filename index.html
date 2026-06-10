@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restablecer contraseña — INSPVEH</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.box{width:100%;max-width:380px}
+.logo{font-size:22px;font-weight:700;letter-spacing:2px;color:#3b82f6;margin-bottom:8px}
+h2{font-size:18px;font-weight:500;margin-bottom:6px}
+p{font-size:13px;color:#8892a4;margin-bottom:24px}
+label{font-size:12px;color:#8892a4;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px}
+input{width:100%;background:#1e2333;border:1px solid #2a3045;border-radius:8px;padding:10px 14px;font-size:14px;color:#e8eaf0;outline:none;margin-bottom:16px}
+input:focus{border-color:#3b82f6}
+button{width:100%;background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:500;cursor:pointer}
+button:hover{opacity:0.9}
+.msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
+.msg-ok{background:#14301f;color:#4ade80;border:1px solid #1a4a2e}
+.msg-err{background:#2d0f0f;color:#f87171;border:1px solid #3a1f1f}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">INSPVEH</div>
+  <h2>Restablecer contraseña</h2>
+  <p>Ingresa tu nueva contraseña para continuar.</p>
+  <div id="msg-ok" class="msg msg-ok">✅ Contraseña actualizada. Ya puedes cerrar esta ventana e iniciar sesión.</div>
+  <div id="msg-err" class="msg msg-err"></div>
+  <label>Nueva contraseña</label>
+  <input id="inp-pass" type="password" placeholder="Mínimo 8 caracteres">
+  <label>Confirmar contraseña</label>
+  <input id="inp-pass2" type="password" placeholder="Repite la contraseña">
+  <button onclick="cambiar()">Guardar nueva contraseña</button>
+</div>
+<script>
+const sb = supabase.createClient(
+  'https://cfbhvmeecrcuilyaveao.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmYmh2bWVlY3JjdWlseWF2ZWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NDMxMzYsImV4cCI6MjA5NjQxOTEzNn0.8bjQ0AAggaDpZRafT0CaRIyb1KBKh5T9pGpV4XNUvL0'
+);
+
+async function cambiar() {
+  const p1 = document.getElementById('inp-pass').value;
+  const p2 = document.getElementById('inp-pass2').value;
+  const err = document.getElementById('msg-err');
+  const ok = document.getElementById('msg-ok');
+  err.style.display = 'none';
+  if (p1.length < 8) { err.textContent = 'La contraseña debe tener mínimo 8 caracteres'; err.style.display = 'block'; return; }
+  if (p1 !== p2) { err.textContent = 'Las contraseñas no coinciden'; err.style.display = 'block'; return; }
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if (error) { err.textContent = 'Error: ' + error.message; err.style.display = 'block'; return; }
+  ok.style.display = 'block';
+  document.querySelector('button').disabled = true;
+}
+</script>
+</body>
+</html>
