@@ -17,9 +17,11 @@ input{width:100%;background:#1e2333;border:1px solid #2a3045;border-radius:8px;p
 input:focus{border-color:#3b82f6}
 button{width:100%;background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:500;cursor:pointer}
 button:hover{opacity:0.9}
+button:disabled{opacity:0.5;cursor:not-allowed}
 .msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
 .msg-ok{background:#14301f;color:#4ade80;border:1px solid #1a4a2e}
 .msg-err{background:#2d0f0f;color:#f87171;border:1px solid #3a1f1f}
+.msg-info{background:#1e3a5f;color:#60a5fa;border:1px solid #1e4a7f}
 </style>
 </head>
 <body>
@@ -27,13 +29,16 @@ button:hover{opacity:0.9}
   <div class="logo">INSPVEH</div>
   <h2>Restablecer contraseña</h2>
   <p>Ingresa tu nueva contraseña para continuar.</p>
-  <div id="msg-ok" class="msg msg-ok">✅ Contraseña actualizada. Ya puedes cerrar esta ventana e iniciar sesión.</div>
+  <div id="msg-info" class="msg msg-info">⏳ Verificando enlace...</div>
+  <div id="msg-ok" class="msg msg-ok"></div>
   <div id="msg-err" class="msg msg-err"></div>
-  <label>Nueva contraseña</label>
-  <input id="inp-pass" type="password" placeholder="Mínimo 8 caracteres">
-  <label>Confirmar contraseña</label>
-  <input id="inp-pass2" type="password" placeholder="Repite la contraseña">
-  <button onclick="cambiar()">Guardar nueva contraseña</button>
+  <div id="form">
+    <label>Nueva contraseña</label>
+    <input id="inp-pass" type="password" placeholder="Mínimo 8 caracteres">
+    <label>Confirmar contraseña</label>
+    <input id="inp-pass2" type="password" placeholder="Repite la contraseña">
+    <button id="btn" onclick="cambiar()" disabled>Guardar nueva contraseña</button>
+  </div>
 </div>
 <script>
 const sb = supabase.createClient(
@@ -41,18 +46,65 @@ const sb = supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmYmh2bWVlY3JjdWlseWF2ZWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NDMxMzYsImV4cCI6MjA5NjQxOTEzNn0.8bjQ0AAggaDpZRafT0CaRIyb1KBKh5T9pGpV4XNUvL0'
 );
 
+const info = document.getElementById('msg-info');
+const err = document.getElementById('msg-err');
+const ok = document.getElementById('msg-ok');
+const btn = document.getElementById('btn');
+
+// Manejar el token del enlace de recuperación
+info.style.display = 'block';
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    info.style.display = 'none';
+    btn.disabled = false;
+  } else if (event === 'SIGNED_IN' && session) {
+    info.style.display = 'none';
+    btn.disabled = false;
+  } else if (!session) {
+    info.style.display = 'none';
+    err.textContent = 'Enlace inválido o expirado. Solicita un nuevo correo de recuperación.';
+    err.style.display = 'block';
+    btn.disabled = true;
+  }
+});
+
+// También intentar leer el token del hash de la URL
+const hash = window.location.hash;
+if (hash && hash.includes('access_token')) {
+  const params = new URLSearchParams(hash.substring(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (accessToken) {
+    sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(({ error }) => {
+        if (!error) {
+          info.style.display = 'none';
+          btn.disabled = false;
+        }
+      });
+  }
+}
+
 async function cambiar() {
   const p1 = document.getElementById('inp-pass').value;
   const p2 = document.getElementById('inp-pass2').value;
-  const err = document.getElementById('msg-err');
-  const ok = document.getElementById('msg-ok');
   err.style.display = 'none';
   if (p1.length < 8) { err.textContent = 'La contraseña debe tener mínimo 8 caracteres'; err.style.display = 'block'; return; }
   if (p1 !== p2) { err.textContent = 'Las contraseñas no coinciden'; err.style.display = 'block'; return; }
-  const { error } = await sb.auth.updateUser({ password: p1 });
-  if (error) { err.textContent = 'Error: ' + error.message; err.style.display = 'block'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  const { error: e } = await sb.auth.updateUser({ password: p1 });
+  if (e) {
+    err.textContent = 'Error: ' + e.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Guardar nueva contraseña';
+    return;
+  }
+  ok.textContent = '✅ Contraseña actualizada correctamente. Ya puedes cerrar esta ventana e iniciar sesión en la app.';
   ok.style.display = 'block';
-  document.querySelector('button').disabled = true;
+  document.getElementById('form').style.display = 'none';
 }
 </script>
 </body>
